@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>Kyiv spruce</title>
+    <style>
+      /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+      #map {
+        height: 100%;
+      }
+      /* Optional: Makes the sample page fill the window. */
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script
+			  src="https://code.jquery.com/jquery-2.2.4.min.js"
+			  integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="
+			  crossorigin="anonymous"></script>
+    <script>
+      var infowindow = null;
+      var mylocation = null;
+      var directionsDisplay = null;
+      var directionsService = null;
+
+      function direction() {
+        var dest = {
+          lat: infowindow.position.lat(),
+          lng: infowindow.position.lng()
+        };
+        directionsService.route({
+          origin: mylocation,
+          destination: dest,
+          travelMode: 'DRIVING'
+        }, function(response, status) {
+          if (status === 'OK') {
+            directionsDisplay.setDirections(response);
+          } else {
+            window.alert('Directions request failed due to ' + status);
+          }
+        });
+      }
+
+      function initMap() {
+        directionsService = new google.maps.DirectionsService;
+        directionsDisplay = new google.maps.DirectionsRenderer({
+            suppressMarkers: true
+        });
+        var map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 11,
+          center: { "lat":50.4641463, "lng":30.511630500000024 }
+        });
+        directionsDisplay.setMap(map);
+
+        $.getJSON("data.json", function(json) {
+          var markers = json.map(function(item) {
+            return new google.maps.Marker({
+              position: item.location,
+              map: map,
+              title: item.addr
+            });
+          });
+          // Add a marker clusterer to manage the markers.
+        // var markerCluster = new MarkerClusterer(map, markers,
+            // {imagePath: 'https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/m'});
+          markers.forEach(function(item, i, arr) {
+            item.addListener('click', function() {
+              if (infowindow) {
+                infowindow.close();
+              }
+              var service = new google.maps.DistanceMatrixService;
+              service.getDistanceMatrix({
+                origins: [mylocation],
+                destinations: [item.position],
+                travelMode: 'DRIVING',
+                unitSystem: google.maps.UnitSystem.METRIC,
+                avoidHighways: false,
+                avoidTolls: false
+              }, function(response, status) {
+                if (status !== 'OK') {
+                  alert('Error was: ' + status);
+                } else {
+                  var dis = response.rows[0].elements[0].distance.text;
+                  var dur = response.rows[0].elements[0].duration.text;
+                  c = item.title +
+                  '</br>~ '+dis+' in '+dur+
+                  '</br><button onclick="direction()">Проложить маршрут</button>';
+                  infowindow.setContent(c);
+                }
+              });
+
+              infowindow = new google.maps.InfoWindow({
+                content: item.title +
+                '</br>...'
+              });
+              infowindow.open(map, item);
+            });
+          });
+        });
+
+        // Try HTML5 geolocation.
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function(position) {
+            mylocation = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            };
+
+            var icon = {
+              url: 'Current_Location-512.png', // url
+              url: 'b8f1e6dd9c.svg',
+              scaledSize: new google.maps.Size(30, 30), // scaled size
+              origin: new google.maps.Point(0,0), // origin
+              anchor: new google.maps.Point(15, 15) // anchor
+            };
+
+            var beachMarker = new google.maps.Marker({
+              position: mylocation,
+              map: map,
+              icon: icon
+            });
+
+            map.setCenter(mylocation);
+            map.setZoom(14);
+          }, function() {
+            handleLocationError(true, infoWindow, map.getCenter());
+          });
+        } else {
+
+        }
+
+    }
+    </script>
+    <script src="https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/markerclusterer.js">
+    </script>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCQcbKltB_-oSCwLj7zhKulNTCnjNNGZFY&callback=initMap">
+    </script>
+  </body>
+</html>
